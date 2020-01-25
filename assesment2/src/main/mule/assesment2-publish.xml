@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	
+	<flow name="assesment2-publishFlow" doc:id="70f6b9c4-aa31-4ba5-b81c-8eeba1f1853a" >
+		<http:listener doc:name="Get: localhost:8081/Publish" doc:id="5f947a39-1edd-4c90-a25a-e69bf38b10db" config-ref="HTTP_Listener_config" path="/Publish"/>
+<!-- 		<file:read doc:name="ReadFileFromResources" doc:id="2f7feb6f-4abd-4df1-bcd5-0cac1769e9c1" path='#[readUrl("classpath://SalesJan2009.csv")]'/> -->
+		<logger level="INFO" doc:name="Logger - Beginning of the Publish flow" doc:id="c85f1d92-cd7a-4ac4-b1d6-62303f770de0" message="JMS Publish Flow starts"/>
+		<ee:transform doc:name="ReadingDataFromResource" doc:id="bfcc74b3-0e24-4b92-a210-b0ba33203178" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/csv
+---
+readUrl("classpath://SalesJan2009.csv","application/csv")]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<try doc:name="Try" doc:id="968a5c48-34a3-4a29-92ed-d5b35ce120f2" >
+			<jms:publish doc:name="PublishToJMSQueue" doc:id="1b34bea4-315e-46f2-a34f-102bf6ef6fc9" config-ref="JMS_Config" destination="${jms.queue.name}">
+			<reconnect frequency="${jms.redelivery.count}" count="${jms.redelivery.frequency}" />
+		</jms:publish>
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="5b768072-f932-4c1d-ab91-904f54a4f3d8" >
+					<logger level="INFO" doc:name="Logger - Publish Failure" doc:id="64d2f44f-6b5a-415e-a1c8-9ef6a7408263" message="Unable to Publish"/>
+					<ee:transform doc:name="ErrorMessage" doc:id="4d269435-81f6-4822-96c8-cf570a70d732" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message": "Unable to Publish message into queue",
+	"success": false
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<logger level="INFO" doc:name="Logger - After Publish" doc:id="b8b2c03f-0c07-431f-a11a-e39ea7cf5f40" message="JMS Publised msg successfully"/>
+	</flow>
+</mule>

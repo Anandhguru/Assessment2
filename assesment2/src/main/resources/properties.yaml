@@ -1,0 +1,9 @@
+jms:
+  queue:
+    name: 'jmsQueue'
+  redelivery:
+      count: '3'
+      frequency: '2000'
+http:
+  host: 'localhost'
+  port: '8081'

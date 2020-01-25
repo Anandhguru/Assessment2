@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	
+	<flow name="assessment2-subscribeFlow" doc:id="8b6640c2-8941-44e7-939a-007c9d4a9eaa" >
+		<jms:listener doc:name="JMSListener - jmsQueue" doc:id="f632af7c-2a98-450d-97a3-b28b21cbe6cb" config-ref="JMS_Config" destination="${jms.queue.name}">
+			<redelivery-policy maxRedeliveryCount="${jms.redelivery.count}" />
+		</jms:listener>
+		<logger level="INFO" doc:name="Logger - Beginning of Consumer Flow" doc:id="c6d466fb-95f0-4f2d-b616-afdddb3152be" message="Consumer Flow starts"/>
+		<ee:transform doc:name="Payload Filter" doc:id="172ee1c7-6310-4a0f-8939-02dc69f71159" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var payloadvar = payload map ({'Transaction_date':($[0] splitBy ' ')[0]} ++ ($ mapObject ((value, key, index) -> (key): trim(value))) - 'Transaction_date') 
+fun price(value) = if(value.Price == "1200") country(value) else ''
+fun country(value) = if(value.Country == 'United States' or value.Country == 'Canada' or value.Country == 'Spain') payment(value) else ''
+fun payment(value) = if(value.Payment_Type == 'Mastercard') value else ''
+---
+payloadvar map (price($)) filter($ != '') ]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="After filter" doc:id="af2a3520-1376-413c-acca-d27526ba3d47" message="payload filtered successfully and the json Output payload is:"/>
+		<logger level="INFO" doc:name="Payload" doc:id="cf187950-1381-4fff-b215-36e559d22b22" message="#[payload]"/>
+	</flow>
+</mule>
